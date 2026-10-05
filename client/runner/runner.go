@@ -19,7 +19,8 @@ type Runner interface {
 }
 
 // RunAsync runs a runner in a go routine with context and adds it to work group.
-func RunAsync(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, r Runner) {
+// A runner error cancels ctx with that error as the cause.
+func RunAsync(ctx context.Context, cancel context.CancelCauseFunc, wg *sync.WaitGroup, r Runner) {
 	if r == nil || reflect.ValueOf(r).IsNil() {
 		return
 	}
@@ -28,13 +29,13 @@ func RunAsync(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup
 		err := r.Run(ctx)
 		if err != nil {
 			logger.Errorf("Stopping: %v", err)
-			cancel()
+			cancel(err)
 		}
 	})
 }
 
 // Start sets up registrationClient, protocolClient, and finalizerClient, then asynchronously runs all of them and returns their workgroup.
-func Start(ctx context.Context, cancel context.CancelFunc, clientCtx clientContext.ClientContext) *sync.WaitGroup {
+func Start(ctx context.Context, cancel context.CancelCauseFunc, clientCtx clientContext.ClientContext) *sync.WaitGroup {
 	cfg := clientCtx.Config()
 	// shared: whichever client first sees the breaking epoch's policy dates the switch for the rest
 	relayCutover := shared.NewRelayCutover(cfg.Chain.ChainID, cfg.RelayCutover.Address, cfg.RelayCutover.StartingRewardEpoch)

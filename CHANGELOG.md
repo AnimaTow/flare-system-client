@@ -12,6 +12,7 @@
 - go-flare-common is upgraded to v1.3.0, which raises `golang.org/x/crypto`, `golang.org/x/text`, `filippo.io/edwards25519`, `go.opentelemetry.io/otel` and `gorm` (to v1.30).
 - Rotated log files are kept for at most 10 files and 30 days, set by `[logger] max_backups` and `max_age_days`; they were kept forever. An invalid `[logger] level` falls back to DEBUG instead of INFO.
 - Indexer transactions and logs with equal timestamps are processed in database id order.
+- The client exits with status 1 when a running client stops on an error or the config or database fails at startup; both exited with 0. A shutdown on SIGINT or SIGTERM still exits with 0.
 
 ## [v1.2.0](https://github.com/flare-foundation/flare-system-client/tree/v1.2.0) - 2026-09-07
 
