@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/toml"
 )
 
 type Client struct {
@@ -48,7 +49,7 @@ type Client struct {
 
 func Build(cfgFileName string) (*Client, error) {
 	cfg := defaultConfig()
-	err := config.ParseConfigFile(cfg, cfgFileName, false)
+	err := toml.ReadTo(cfgFileName, cfg, true)
 	if err != nil {
 		return nil, err
 	}

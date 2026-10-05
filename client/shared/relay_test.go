@@ -2,7 +2,6 @@ package shared
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -191,17 +190,6 @@ func TestDigestFromMessageRejectsMalformedBytes(t *testing.T) {
 	require.Error(t, err)
 }
 
-// The chain-bound preimage is the Relay's abi.encodePacked(uint256 sourceChainId,
-// content): a 32-byte big-endian id, then the raw content.
-func TestChainIDWord(t *testing.T) {
-	require.Equal(t,
-		"0000000000000000000000000000000000000000000000000000000000000072",
-		hex.EncodeToString(ChainIDWord(114)))
-	require.Equal(t,
-		"000000000000000000000000000000000000000000000000000000000000000e",
-		hex.EncodeToString(ChainIDWord(14)))
-}
-
 func TestMessageDigestForms(t *testing.T) {
 	msg := []byte("protocol message")
 
@@ -209,7 +197,7 @@ func TestMessageDigestForms(t *testing.T) {
 		accounts.TextHash(crypto.Keccak256(msg)),
 		MessageDigest(msg, testChainID, false))
 	require.Equal(t,
-		accounts.TextHash(crypto.Keccak256(ChainIDWord(testChainID), msg)),
+		accounts.TextHash(crypto.Keccak256(binary.BigEndian.AppendUint64(make([]byte, 24), uint64(testChainID)), msg)),
 		MessageDigest(msg, testChainID, true))
 
 	// the binding is what makes a foreign-chain signature unusable

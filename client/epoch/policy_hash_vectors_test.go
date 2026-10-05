@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
 )
 
 // 5-voter epoch-1 policy via setSigningPolicy on Relay.sol (setter mode, sourceChainId 114)
@@ -25,16 +27,16 @@ const (
 
 // The fold is pinned against the deployed bytecode, not against its own re-expression.
 func TestSigningPolicyHashLiveRelayVector(t *testing.T) {
-	policy, err := hex.DecodeString(livePolicyHex)
+	encoded, err := hex.DecodeString(livePolicyHex)
 	require.NoError(t, err)
-	require.Equal(t, liveLegacyHashHex, hex.EncodeToString(SigningPolicyHash(policy)))
+	require.Equal(t, liveLegacyHashHex, hex.EncodeToString(policy.Hash(encoded)))
 }
 
 func TestPolicyHashSolidityVectors(t *testing.T) {
-	policy, err := hex.DecodeString(vectorPolicyHex)
+	encoded, err := hex.DecodeString(vectorPolicyHex)
 	require.NoError(t, err)
-	require.Len(t, policy, 153) // 43 + 5*22, not a multiple of 32
+	require.Len(t, encoded, 153) // 43 + 5*22, not a multiple of 32
 
-	require.Equal(t, vectorChainBoundHashHex, hex.EncodeToString(ChainBoundSigningPolicyHash(policy, vectorChainID)))
-	require.Equal(t, vectorLegacyHashHex, hex.EncodeToString(SigningPolicyHash(policy)))
+	require.Equal(t, vectorChainBoundHashHex, hex.EncodeToString(policy.ChainBoundHash(vectorChainID, encoded)))
+	require.Equal(t, vectorLegacyHashHex, hex.EncodeToString(policy.Hash(encoded)))
 }

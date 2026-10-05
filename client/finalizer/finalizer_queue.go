@@ -239,7 +239,7 @@ func (p *finalizerQueueProcessor) processItem(ctx context.Context, item *queueIt
 		return
 	}
 
-	if p.needsFinalizationData(item.protocolID, data.signingPolicy.RewardEpochID) {
+	if p.needsFinalizationData(item.protocolID, int64(data.signingPolicy.RewardEpochID)) {
 		if len(result.finalizationData) == 0 {
 			// the Relay reverts without them, and no retry can supply them
 			logger.Errorf("the random protocol served no random number and Merkle proof for round %d, not finalizing protocol %d",
@@ -258,7 +258,7 @@ func (p *finalizerQueueProcessor) processItem(ctx context.Context, item *queueIt
 	}
 
 	// the tx carries the policy bytes, so it must go to the Relay storing that policy's hash
-	address := p.relayClient.addressForRewardEpoch(data.signingPolicy.RewardEpochID)
+	address := p.relayClient.addressForRewardEpoch(int64(data.signingPolicy.RewardEpochID))
 
 	logger.Infof("Relaying for round %d for protocol %d to %s (delayed=%t)", item.votingRoundID, item.protocolID, address, isDelayed)
 	p.relayClient.SubmitPayloads(ctx, address, txInput, isDelayed, item.protocolID, item.votingRoundID)
@@ -278,7 +278,7 @@ func (p *finalizerQueueProcessor) processDelayedQueue(ctx context.Context, items
 	for _, item := range items {
 		// skip only when the item's own target Relay already has it
 		if data, exists := p.finalizationStorage.get(item.votingRoundID, item.protocolID); exists {
-			address := p.relayClient.addressForRewardEpoch(data.signingPolicy.RewardEpochID)
+			address := p.relayClient.addressForRewardEpoch(int64(data.signingPolicy.RewardEpochID))
 			if relayedItems.has(address, relayedKey{protocolID: item.protocolID, votingRoundID: item.votingRoundID}) {
 				continue
 			}

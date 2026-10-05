@@ -44,7 +44,7 @@ func (pc *protocolCollection) messageDigest(message shared.Message) []byte {
 	if digest, known, err := pc.relayCutover.DigestFromMessage(message); err == nil && known {
 		return digest
 	}
-	return pc.relayCutover.DigestForRewardEpoch(message, pc.signingPolicy.RewardEpochID)
+	return pc.relayCutover.DigestForRewardEpoch(message, int64(pc.signingPolicy.RewardEpochID))
 }
 
 // roundCollection maps protocolID to protocolCollection

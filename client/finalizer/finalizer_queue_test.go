@@ -15,7 +15,6 @@ import (
 	"github.com/flare-foundation/flare-system-client/utils"
 
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 func TestDelayedRetryTime(t *testing.T) {
@@ -76,7 +75,7 @@ func TestProcessDelayedQueueSurvivesDBError(t *testing.T) {
 	sig, err := signMessage(msg, privateKey)
 	require.NoError(t, err)
 
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{sender}, []uint16{2}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{sender}, []uint16{2})}
 	storage := storageWithMessage(t, testCutover, 1, msg, sp)
 	ready, err := storage.addPayload(&submitSignaturesPayload{
 		protocolID: 1, votingRoundID: 1, signature: sig, sender: sender,

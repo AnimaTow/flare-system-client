@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +21,7 @@ func clientForThreshold(t *testing.T, threshold, totalWeight, thresholdIncreaseB
 		RewardEpochID:      1,
 		StartVotingRoundID: 100,
 		Threshold:          threshold,
-		Voters:             voters.NewSet([]common.Address{{1}}, []uint16{totalWeight}, nil),
+		Voters:             newVoterSet(t, []common.Address{{1}}, []uint16{totalWeight}),
 	}
 	require.Equal(t, totalWeight, sp.Voters.TotalWeight)
 

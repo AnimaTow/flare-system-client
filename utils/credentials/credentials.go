@@ -10,11 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func TransactOptsFromPrivateKey(pk *ecdsa.PrivateKey, chainID int64) (*bind.TransactOpts, error) {
-	opts, _, err := CredentialsFromPrivateKey(pk, chainID)
-	return opts, err
-}
-
 func CredentialsFromPrivateKey(pk *ecdsa.PrivateKey, chainID int64) (*bind.TransactOpts, *ecdsa.PrivateKey, error) {
 	opts, err := bind.NewKeyedTransactorWithChainID(
 		pk, big.NewInt(chainID),

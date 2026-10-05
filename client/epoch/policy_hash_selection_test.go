@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/system"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
 	"github.com/stretchr/testify/require"
 )
 
@@ -128,18 +129,18 @@ func scheduledCutover() *shared.RelayCutover {
 
 func testPolicy(t *testing.T) []byte {
 	t.Helper()
-	policy, err := hex.DecodeString(vectorPolicyHex)
+	encoded, err := hex.DecodeString(vectorPolicyHex)
 	require.NoError(t, err)
-	return policy
+	return encoded
 }
 
 func TestSigningPolicyHashOutcomes(t *testing.T) {
-	policy := testPolicy(t)
+	encoded := testPolicy(t)
 	epoch := big.NewInt(5236)
 
 	t.Run("chain-bound match", func(t *testing.T) {
-		c, node := clientForStoredHash(t, newRelayAddress, ChainBoundSigningPolicyHash(policy, vectorChainID), scheduledCutover())
-		got, err := c.signingPolicyHash(epoch, policy)
+		c, node := clientForStoredHash(t, newRelayAddress, policy.ChainBoundHash(vectorChainID, encoded), scheduledCutover())
+		got, err := c.signingPolicyHash(epoch, encoded)
 		require.NoError(t, err)
 		require.Equal(t, vectorChainBoundHashHex, hex.EncodeToString(got))
 		// the hash must be read for the epoch being signed, not for whatever the binding defaults to
@@ -147,8 +148,8 @@ func TestSigningPolicyHashOutcomes(t *testing.T) {
 	})
 
 	t.Run("legacy match", func(t *testing.T) {
-		c, node := clientForStoredHash(t, oldRelayAddress, SigningPolicyHash(policy), unscheduledCutover())
-		got, err := c.signingPolicyHash(epoch, policy)
+		c, node := clientForStoredHash(t, oldRelayAddress, policy.Hash(encoded), unscheduledCutover())
+		got, err := c.signingPolicyHash(epoch, encoded)
 		require.NoError(t, err)
 		require.Equal(t, vectorLegacyHashHex, hex.EncodeToString(got))
 		require.Equal(t, []int64{5236}, node.epochsAsked())
@@ -156,15 +157,15 @@ func TestSigningPolicyHashOutcomes(t *testing.T) {
 
 	t.Run("no match", func(t *testing.T) {
 		c, _ := clientForStoredHash(t, oldRelayAddress, common.LeftPadBytes([]byte{0xde, 0xad}, 32), unscheduledCutover())
-		got, err := c.signingPolicyHash(epoch, policy)
+		got, err := c.signingPolicyHash(epoch, encoded)
 		require.Nil(t, got)
 		require.ErrorContains(t, err, "no supported hash of the signing policy of epoch 5236 matches relay")
 	})
 
 	// a policy hashed for the wrong source chain must never be signed
 	t.Run("chain-bound for another chain does not match", func(t *testing.T) {
-		c, _ := clientForStoredHash(t, newRelayAddress, ChainBoundSigningPolicyHash(policy, 14), scheduledCutover())
-		_, err := c.signingPolicyHash(epoch, policy)
+		c, _ := clientForStoredHash(t, newRelayAddress, policy.ChainBoundHash(14, encoded), scheduledCutover())
+		_, err := c.signingPolicyHash(epoch, encoded)
 		require.Error(t, err)
 	})
 }
@@ -173,9 +174,9 @@ func TestSigningPolicyHashOutcomes(t *testing.T) {
 // below the breaking epoch (it delegates) and binds the chain from it on. Epoch B under the
 // old pointer is sanctioned — the repoint cannot precede B's policy (deploy, then a timelock).
 func TestSigningPolicyHashFollowsTheBreakingEpochAndThePointer(t *testing.T) {
-	policy := testPolicy(t)
-	chainBound := ChainBoundSigningPolicyHash(policy, vectorChainID)
-	legacy := SigningPolicyHash(policy)
+	encoded := testPolicy(t)
+	chainBound := policy.ChainBoundHash(vectorChainID, encoded)
+	legacy := policy.Hash(encoded)
 
 	tests := []struct {
 		name     string
@@ -198,7 +199,7 @@ func TestSigningPolicyHashFollowsTheBreakingEpochAndThePointer(t *testing.T) {
 			warnings := captureWarnings(t)
 			c, _ := clientForStoredHash(t, tt.pointsAt, tt.want, tt.cutover)
 
-			got, err := c.signingPolicyHash(big.NewInt(tt.epoch), policy)
+			got, err := c.signingPolicyHash(big.NewInt(tt.epoch), encoded)
 			require.NoError(t, err)
 			require.Equal(t, hex.EncodeToString(tt.want), hex.EncodeToString(got))
 			require.NotContains(t, warnings(), "hashed", "the expected scheme must need no fallback")
@@ -208,9 +209,9 @@ func TestSigningPolicyHashFollowsTheBreakingEpochAndThePointer(t *testing.T) {
 
 // The fallback keeps the signature when the table disagrees with the chain.
 func TestSigningPolicyHashFallsBackLoudly(t *testing.T) {
-	policy := testPolicy(t)
-	chainBound := ChainBoundSigningPolicyHash(policy, vectorChainID)
-	legacy := SigningPolicyHash(policy)
+	encoded := testPolicy(t)
+	chainBound := policy.ChainBoundHash(vectorChainID, encoded)
+	legacy := policy.Hash(encoded)
 
 	tests := []struct {
 		name     string
@@ -229,7 +230,7 @@ func TestSigningPolicyHashFallsBackLoudly(t *testing.T) {
 			warnings := captureWarnings(t)
 			c, _ := clientForStoredHash(t, tt.pointsAt, tt.stored, scheduledCutover())
 
-			got, err := c.signingPolicyHash(big.NewInt(tt.epoch), policy)
+			got, err := c.signingPolicyHash(big.NewInt(tt.epoch), encoded)
 			require.NoError(t, err)
 			require.Equal(t, hex.EncodeToString(tt.stored), hex.EncodeToString(got))
 			require.Contains(t, warnings(), tt.warn)
@@ -240,11 +241,11 @@ func TestSigningPolicyHashFallsBackLoudly(t *testing.T) {
 
 // The pointer is re-read per call, so a governance repoint mid-epoch is picked up.
 func TestSigningPolicyHashReadsTheManagersRelayEveryCall(t *testing.T) {
-	policy := testPolicy(t)
-	c, node := clientForStoredHash(t, newRelayAddress, ChainBoundSigningPolicyHash(policy, vectorChainID), scheduledCutover())
+	encoded := testPolicy(t)
+	c, node := clientForStoredHash(t, newRelayAddress, policy.ChainBoundHash(vectorChainID, encoded), scheduledCutover())
 
 	for range 3 {
-		_, err := c.signingPolicyHash(big.NewInt(5236), policy)
+		_, err := c.signingPolicyHash(big.NewInt(5236), encoded)
 		require.NoError(t, err)
 	}
 

@@ -15,7 +15,6 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 func bufferPayload(t *testing.T, pc *protocolCollection, sender common.Address) {
@@ -55,7 +54,7 @@ func TestProtocolCollectionBuffersPerSenderIndependently(t *testing.T) {
 func TestPayloadsWaitForTheMessage(t *testing.T) {
 	const round = uint32(50)
 	priv, addr := newKeyAndAddress(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addr}, []uint16{2}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addr}, []uint16{2})}
 
 	message := make(shared.Message, 38)
 	_, err := rand.Read(message)
@@ -84,7 +83,7 @@ func TestPayloadsWaitForTheMessage(t *testing.T) {
 func TestASecondMessageCannotDisplaceTheFirst(t *testing.T) {
 	const round = uint32(60)
 	priv, addr := newKeyAndAddress(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addr}, []uint16{2}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addr}, []uint16{2})}
 
 	first := buildMessage(1, round, randomValue)
 	firstData := words(randomValue)
@@ -130,7 +129,7 @@ func bufferRoundPayload(t *testing.T, s *finalizationStorage, round uint32, sp *
 // round that was never deleted.
 func TestRemoveRoundsBeforeKeepsTargetRound(t *testing.T) {
 	s := newFinalizationStorage(testCutover)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 
 	for round := uint32(100); round <= 105; round++ {
 		require.NoError(t, bufferRoundPayload(t, s, round, sp))
@@ -169,7 +168,7 @@ func TestFinalizationStorageConcurrentAccess(t *testing.T) {
 		privs[i], addrs[i] = newKeyAndAddress(t)
 		weights[i] = 1
 	}
-	sp := &policy.SigningPolicy{Voters: voters.NewSet(addrs, weights, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, addrs, weights)}
 	threshold := uint16(voterCount / 2)
 
 	message := make(shared.Message, 38)
@@ -234,7 +233,7 @@ func TestBadPayloadClassification(t *testing.T) {
 		sig := signVRS(t, hash, priv)
 		sig[0] = 99 // invalid V
 		pld := &submitSignaturesPayload{signature: sig, voterIndex: -1}
-		set := voters.NewSet([]common.Address{{}}, []uint16{1}, nil)
+		set := newVoterSet(t, []common.Address{{}}, []uint16{1})
 		require.ErrorIs(t, pld.AddSigner(hash, set), errBadPayload)
 	})
 
@@ -242,13 +241,13 @@ func TestBadPayloadClassification(t *testing.T) {
 		priv, _ := newKeyAndAddress(t)
 		pld := &submitSignaturesPayload{signature: signVRS(t, hash, priv), voterIndex: -1}
 		stranger := common.HexToAddress("0x2222222222222222222222222222222222222222")
-		set := voters.NewSet([]common.Address{stranger}, []uint16{1}, nil)
+		set := newVoterSet(t, []common.Address{stranger}, []uint16{1})
 		require.ErrorIs(t, pld.AddSigner(hash, set), errBadPayload)
 	})
 
 	t.Run("duplicate signature", func(t *testing.T) {
 		_, addr := newKeyAndAddress(t)
-		sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addr}, []uint16{1}, nil)}
+		sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addr}, []uint16{1})}
 		sc := NewSignatureCollection(shared.Message{}, sp, 100)
 		pld := &submitSignaturesPayload{signature: []byte{1}, voterIndex: 0, signer: addr}
 		_, err := sc.addSignature(pld)
@@ -260,7 +259,7 @@ func TestBadPayloadClassification(t *testing.T) {
 	t.Run("round below lowest stored", func(t *testing.T) {
 		s := newFinalizationStorage(testCutover)
 		s.lowestRoundStored = 5
-		sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+		sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 		_, err := s.addPayload(&submitSignaturesPayload{votingRoundID: 1}, sp, 100)
 		require.ErrorIs(t, err, errBadPayload)
 	})
@@ -293,7 +292,7 @@ func captureLogs(t *testing.T, level string) func() string {
 // Giving up on a round is the only Warn-level signal; protocols we never served a message for are skipped.
 func TestPruneWarnsAboutAnUnfinalizedRound(t *testing.T) {
 	warnings := captureWarnings(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 	message := make(shared.Message, shared.RelayMessageLength)
 
 	s := newFinalizationStorage(testCutover)
@@ -317,7 +316,7 @@ func TestPruneWarnsAboutAnUnfinalizedRound(t *testing.T) {
 func TestPruneIsQuietForAFinalizedRound(t *testing.T) {
 	warnings := captureWarnings(t)
 	priv, addr := newKeyAndAddress(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addr}, []uint16{2}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addr}, []uint16{2})}
 	message := make(shared.Message, shared.RelayMessageLength)
 
 	s := newFinalizationStorage(testCutover)

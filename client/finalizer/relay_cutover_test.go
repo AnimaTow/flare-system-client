@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/flare-foundation/flare-system-client/client/shared"
-	"github.com/flare-foundation/flare-system-client/utils"
 	"github.com/flare-foundation/flare-system-client/utils/chain"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/encoding"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 var (
@@ -124,7 +123,7 @@ func signDigest(t *testing.T, digest []byte, key *ecdsa.PrivateKey) []byte {
 	t.Helper()
 	signature, err := crypto.Sign(digest, key)
 	require.NoError(t, err)
-	vrs, err := utils.TransformSignatureRSVtoVRS(signature)
+	vrs, err := encoding.TransformSignatureRSVtoVRS(signature)
 	require.NoError(t, err)
 	return vrs
 }
@@ -143,8 +142,8 @@ func TestSignerRecoveryFollowsTheLearnedBoundary(t *testing.T) {
 
 	// a policy below the breaking epoch: the message arrives while the fallback form still applies
 	sp := &policy.SigningPolicy{
-		RewardEpochID: testBreakingEpoch - 1,
-		Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+		RewardEpochID: uint32(testBreakingEpoch - 1),
+		Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 	}
 
 	storage := newFinalizationStorage(cutover)
@@ -188,8 +187,8 @@ func TestFinalizerRecoversSignersUnderThePolicyEpochDigest(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			sp := &policy.SigningPolicy{
-				RewardEpochID: c.rewardEpoch,
-				Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+				RewardEpochID: uint32(c.rewardEpoch),
+				Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 			}
 
 			matching := &submitSignaturesPayload{
@@ -245,8 +244,8 @@ func TestFinalizerRecoversSignersUnderTheEmbeddedRoundDigest(t *testing.T) {
 			require.NoError(t, err)
 
 			sp := &policy.SigningPolicy{
-				RewardEpochID: c.rewardEpoch,
-				Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+				RewardEpochID: uint32(c.rewardEpoch),
+				Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 			}
 			pld := &submitSignaturesPayload{
 				sender:        signer,

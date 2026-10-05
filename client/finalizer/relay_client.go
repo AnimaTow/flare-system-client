@@ -16,7 +16,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
 
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/relay"
 )
@@ -79,12 +81,12 @@ func NewRelayContractClient(
 	}
 	relaySelectorBytes := relayABI.Methods["relay"].ID
 
-	topic0SPI, err := chain.EventIDFromMetadata(relay.RelayMetaData, "SigningPolicyInitialized")
+	topic0SPI, err := events.SelectorFromMetadata(relay.RelayMetaData, "SigningPolicyInitialized")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
 	}
-	topic0PMR, err := chain.EventIDFromMetadata(relay.RelayMetaData, "ProtocolMessageRelayed")
+	topic0PMR, err := events.SelectorFromMetadata(relay.RelayMetaData, "ProtocolMessageRelayed")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
@@ -157,7 +159,7 @@ func (r *relayContractClient) FetchSigningPolicies(ctx context.Context, db final
 
 	result := make([]signingPolicyListenerResponse, 0, len(logs))
 	for _, log := range logs {
-		policyData, err := shared.ParseSigningPolicyInitializedEvent(r.relay, log)
+		policyData, err := policy.ParseSigningPolicyInitializedEvent(log)
 		if err != nil {
 			logger.Errorf("Error parsing SigningPolicyInitialized event %v", err)
 			return nil, err
@@ -187,7 +189,7 @@ func (r *relayContractClient) SigningPolicyInitializedListener(ctx context.Conte
 			}
 
 			for _, log := range logs {
-				policyData, err := shared.ParseSigningPolicyInitializedEvent(r.relay, log)
+				policyData, err := policy.ParseSigningPolicyInitializedEvent(log)
 				if err != nil {
 					logger.Errorf("Error parsing SigningPolicyInitialized event %v", err)
 					break

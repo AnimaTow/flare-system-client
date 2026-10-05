@@ -12,7 +12,6 @@ import (
 
 	"github.com/flare-foundation/flare-system-client/utils/credentials"
 
-	"github.com/BurntSushi/toml"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/kelseyhightower/envconfig"
@@ -89,23 +88,6 @@ type ContractAddresses struct {
 	VoterRegistry    common.Address `toml:"voter_registry" envconfig:"VOTER_REGISTRY_CONTRACT_ADDRESS"`
 	VoterPreRegistry common.Address `toml:"voter_preregistry" envconfig:"VOTER_PREREGISTRY_CONTRACT_ADDRESS"`
 	Relay            common.Address `toml:"relay" envconfig:"RELAY_CONTRACT_ADDRESS"`
-}
-
-func ParseConfigFile(cfg any, fileName string, allowMissing bool) error {
-	content, err := os.ReadFile(fileName)
-	if err != nil {
-		if allowMissing {
-			return nil
-		} else {
-			return fmt.Errorf("opening config file: %w", err)
-		}
-	}
-
-	_, err = toml.Decode(string(content), cfg)
-	if err != nil {
-		return fmt.Errorf("parsing config file: %w", err)
-	}
-	return nil
 }
 
 func ReadEnv(cfg any) error {

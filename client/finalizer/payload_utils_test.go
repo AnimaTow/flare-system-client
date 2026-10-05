@@ -14,7 +14,6 @@ import (
 
 	"github.com/flare-foundation/flare-system-client/client/protocol"
 	"github.com/flare-foundation/flare-system-client/client/shared"
-	"github.com/flare-foundation/flare-system-client/utils"
 
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
@@ -265,6 +264,13 @@ func newKeyAndAddress(t *testing.T) (*ecdsa.PrivateKey, common.Address) {
 	return priv, crypto.PubkeyToAddress(priv.PublicKey)
 }
 
+func newVoterSet(t *testing.T, addrs []common.Address, weights []uint16) *voters.Set {
+	t.Helper()
+	set, err := voters.NewSet(addrs, weights, nil)
+	require.NoError(t, err)
+	return set
+}
+
 func TestAddSigner_HappyPath(t *testing.T) {
 	priv, addr := newKeyAndAddress(t)
 	hash := crypto.Keccak256([]byte("any-message"))
@@ -275,10 +281,10 @@ func TestAddSigner_HappyPath(t *testing.T) {
 	}
 
 	other := common.HexToAddress("0x1111111111111111111111111111111111111111")
-	set := voters.NewSet(
+	set := newVoterSet(
+		t,
 		[]common.Address{addr, other},
 		[]uint16{777, 222},
-		nil,
 	)
 
 	require.NoError(t, pld.AddSigner(hash, set))
@@ -297,10 +303,10 @@ func TestAddSigner_LooksUpCorrectIndexForNonZeroPosition(t *testing.T) {
 		signature:  signVRS(t, hash, priv2),
 		voterIndex: -1,
 	}
-	set := voters.NewSet(
+	set := newVoterSet(
+		t,
 		[]common.Address{addr1, addr2},
 		[]uint16{100, 250},
-		nil,
 	)
 
 	require.NoError(t, pld.AddSigner(hash, set))
@@ -317,7 +323,7 @@ func TestAddSigner_RejectsSignerOutsideVoterSet(t *testing.T) {
 		voterIndex: -1,
 	}
 	stranger := common.HexToAddress("0x2222222222222222222222222222222222222222")
-	set := voters.NewSet([]common.Address{stranger}, []uint16{500}, nil)
+	set := newVoterSet(t, []common.Address{stranger}, []uint16{500})
 
 	err := pld.AddSigner(hash, set)
 	require.Error(t, err)
@@ -337,7 +343,7 @@ func TestAddSigner_WrongMessageHashRecoversWrongAddress(t *testing.T) {
 		signature:  signVRS(t, hash1, priv),
 		voterIndex: -1,
 	}
-	set := voters.NewSet([]common.Address{addr}, []uint16{100}, nil)
+	set := newVoterSet(t, []common.Address{addr}, []uint16{100})
 
 	err := pld.AddSigner(hash2, set)
 	require.Error(t, err)
@@ -353,7 +359,7 @@ func TestAddSigner_RejectsSignatureWithInvalidVByte(t *testing.T) {
 
 	pld := submitSignaturesPayload{signature: sig, voterIndex: -1}
 	addr := common.HexToAddress("0x3333333333333333333333333333333333333333")
-	set := voters.NewSet([]common.Address{addr}, []uint16{1}, nil)
+	set := newVoterSet(t, []common.Address{addr}, []uint16{1})
 
 	err := pld.AddSigner(hash, set)
 	require.ErrorIs(t, err, errBadPayload)
@@ -464,7 +470,7 @@ func TestAddSigner_NormalizesHighSAndKeepsTheVoter(t *testing.T) {
 		signature:  malleateVRS(t, low),
 		voterIndex: -1,
 	}
-	set := voters.NewSet([]common.Address{addr}, []uint16{777}, nil)
+	set := newVoterSet(t, []common.Address{addr}, []uint16{777})
 
 	require.NoError(t, pld.AddSigner(hash, set))
 	require.Equal(t, addr, pld.signer, "n-s must recover the same signer")
@@ -483,7 +489,7 @@ func TestPreparedTxInputCarriesOnlyCanonicalSignatures(t *testing.T) {
 		signature:  malleateVRS(t, signVRS(t, hash, priv)),
 		voterIndex: -1,
 	}
-	require.NoError(t, pld.AddSigner(hash, voters.NewSet([]common.Address{addr}, []uint16{1}, nil)))
+	require.NoError(t, pld.AddSigner(hash, newVoterSet(t, []common.Address{addr}, []uint16{1})))
 
 	encoded, err := encodeSignatures([]IndexedSignature{{index: 0, signature: pld.signature}})
 	require.NoError(t, err)
@@ -516,7 +522,7 @@ func submittedPayload(t *testing.T, key *ecdsa.PrivateKey, protocolType uint8, m
 // A type-0 payload's own message is never read: the signature is checked against the local message.
 func TestSignatureIsVerifiedAgainstTheLocalMessage(t *testing.T) {
 	key, addr := newKeyAndAddress(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addr}, []uint16{2}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addr}, []uint16{2})}
 
 	signed, err := encodeMessage(1, 7, true, bytes.Repeat([]byte{0x11}, 32))
 	require.NoError(t, err)
@@ -540,7 +546,7 @@ func TestSignatureIsVerifiedAgainstTheLocalMessage(t *testing.T) {
 func TestBothTypesShareOneCollection(t *testing.T) {
 	keyA, addrA := newKeyAndAddress(t)
 	keyB, addrB := newKeyAndAddress(t)
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{addrA, addrB}, []uint16{1, 1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{addrA, addrB}, []uint16{1, 1})}
 
 	message, err := encodeMessage(1, 7, true, bytes.Repeat([]byte{0x33}, 32))
 	require.NoError(t, err)
@@ -563,9 +569,9 @@ func TestBothTypesShareOneCollection(t *testing.T) {
 // ~65 KB per bundled payload, until the round is pruned.
 func TestParsedSignatureDoesNotPinTheTxInput(t *testing.T) {
 	const trailer = 8192
-	payload := make([]byte, 1+utils.SignatureLength+trailer)
+	payload := make([]byte, 1+crypto.SignatureLength+trailer)
 	payload[0] = 1
-	for i := range payload[1 : 1+utils.SignatureLength] {
+	for i := range payload[1 : 1+crypto.SignatureLength] {
 		payload[1+i] = byte(i + 1)
 	}
 

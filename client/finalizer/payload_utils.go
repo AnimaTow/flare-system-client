@@ -8,11 +8,11 @@ import (
 	"math/big"
 
 	"github.com/flare-foundation/flare-system-client/client/shared"
-	"github.com/flare-foundation/flare-system-client/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/flare-foundation/go-flare-common/pkg/encoding"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
@@ -96,7 +96,7 @@ func (s *submitSignaturesPayload) FromSignedPayload(payloadMsg payloadMessage) e
 	default:
 		return fmt.Errorf("invalid typeID %d", typeID)
 	}
-	signatureEnd := signatureStart + utils.SignatureLength
+	signatureEnd := signatureStart + crypto.SignatureLength
 
 	if len(payloadMsg.payload) < signatureEnd {
 		return fmt.Errorf("payload of type %d to short got %d, should be at least %d", typeID, len(payloadMsg.payload), signatureEnd)
@@ -126,9 +126,9 @@ var (
 // normalized, not dropped — dropping would cost that voter's weight and could put the round
 // below threshold.
 func canonicalSignature(vrs []byte) ([]byte, bool, error) {
-	if len(vrs) != utils.SignatureLength {
+	if len(vrs) != crypto.SignatureLength {
 		return nil, false, fmt.Errorf("%w: signature is %d bytes, expected %d",
-			errBadPayload, len(vrs), utils.SignatureLength)
+			errBadPayload, len(vrs), crypto.SignatureLength)
 	}
 
 	v := vrs[0]
@@ -145,7 +145,7 @@ func canonicalSignature(vrs []byte) ([]byte, bool, error) {
 		return vrs, false, nil
 	}
 
-	normalized := make([]byte, utils.SignatureLength)
+	normalized := make([]byte, crypto.SignatureLength)
 	if v == 27 { // flip the recovery bit to match n-s
 		normalized[0] = 28
 	} else {
@@ -172,7 +172,7 @@ func (pld *submitSignaturesPayload) AddSigner(digest []byte, voterSet *voters.Se
 	}
 	pld.signature = signature
 
-	transformedSignature, err := utils.TransformSignatureVRStoRSV(pld.signature)
+	transformedSignature, err := encoding.TransformSignatureVRStoRSV(pld.signature)
 	if err != nil {
 		return fmt.Errorf("transforming signature: %w", err)
 	}
