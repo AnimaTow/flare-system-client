@@ -26,6 +26,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
 )
 
 var (
@@ -203,7 +204,7 @@ func (s *systemsManagerContractClientImpl) signingPolicyHash(rewardEpochId *big.
 	chainBound := s.relayCutover.NewRelayFromRewardEpoch(rewardEpochId.Int64()) &&
 		relayAddress == s.relayCutover.NewAddress
 
-	expected, other := SigningPolicyHash(signingPolicy), ChainBoundSigningPolicyHash(signingPolicy, s.chainID)
+	expected, other := policy.Hash(signingPolicy), policy.ChainBoundHash(uint64(s.chainID), signingPolicy)
 	expectedName, otherName := "legacy", "chain-bound"
 	if chainBound {
 		expected, other = other, expected
@@ -223,28 +224,6 @@ func (s *systemsManagerContractClientImpl) signingPolicyHash(rewardEpochId *big.
 		rewardEpochId, relayAddress, common.Hash(stored))
 }
 
-// ChainBoundSigningPolicyHash is the hash the new Relay stores: one keccak over
-// the 32-byte source chain id followed by the raw encoded policy, unpadded.
-func ChainBoundSigningPolicyHash(signingPolicy []byte, chainID int64) []byte {
-	return crypto.Keccak256(shared.ChainIDWord(chainID), signingPolicy)
-}
-
-// SigningPolicyHash is the hash the old Relay stores: the encoded policy is
-// zero-padded to a multiple of 32 bytes and its chunks are folded left to right.
-func SigningPolicyHash(signingPolicy []byte) []byte {
-	if rest := len(signingPolicy) % 32; rest != 0 {
-		// copy — appending could write past the caller's slice into the same allocation
-		padded := make([]byte, len(signingPolicy)+32-rest)
-		copy(padded, signingPolicy)
-		signingPolicy = padded
-	}
-	hash := crypto.Keccak256(signingPolicy[:32], signingPolicy[32:64])
-	for i := 2; i < len(signingPolicy)/32; i++ {
-		hash = crypto.Keccak256(hash, signingPolicy[i*32:(i+1)*32])
-	}
-	return hash
-}
-
 func (s *systemsManagerContractClientImpl) GetCurrentRewardEpochID() <-chan shared.ExecuteStatus[*big.Int] {
 	return shared.ExecuteWithRetryChan(context.Background(), func() (*big.Int, error) {
 		id, err := s.flareSystemsManager.GetCurrentRewardEpochId(nil)
@@ -257,7 +236,7 @@ func (s *systemsManagerContractClientImpl) GetCurrentRewardEpochID() <-chan shar
 
 func (s *systemsManagerContractClientImpl) RewardEpochStartedListener(ctx context.Context, db epochClientDB, rewardEpochTiming *utils.EpochTimingConfig) <-chan *system.FlareSystemsManagerRewardEpochStarted {
 	out := make(chan *system.FlareSystemsManagerRewardEpochStarted)
-	topic0, err := chain.EventIDFromMetadata(system.FlareSystemsManagerMetaData, "RewardEpochStarted")
+	topic0, err := events.SelectorFromMetadata(system.FlareSystemsManagerMetaData, "RewardEpochStarted")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
@@ -302,7 +281,7 @@ func (s *systemsManagerContractClientImpl) parseRewardEpochStartedEvent(dbLog da
 
 func (s *systemsManagerContractClientImpl) VotePowerBlockSelectedListener(ctx context.Context, db epochClientDB, rewardEpochTiming *utils.EpochTimingConfig) <-chan *system.FlareSystemsManagerVotePowerBlockSelected {
 	out := make(chan *system.FlareSystemsManagerVotePowerBlockSelected)
-	topic0, err := chain.EventIDFromMetadata(system.FlareSystemsManagerMetaData, "VotePowerBlockSelected")
+	topic0, err := events.SelectorFromMetadata(system.FlareSystemsManagerMetaData, "VotePowerBlockSelected")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
@@ -351,7 +330,7 @@ func (s *systemsManagerContractClientImpl) RewardEpochTimingFromChain() (*utils.
 
 func (s *systemsManagerContractClientImpl) SignUptimeVoteEnabledListener(ctx context.Context, db epochClientDB, epoch *utils.EpochTimingConfig) <-chan *system.FlareSystemsManagerSignUptimeVoteEnabled {
 	out := make(chan *system.FlareSystemsManagerSignUptimeVoteEnabled)
-	topic0, err := chain.EventIDFromMetadata(system.FlareSystemsManagerMetaData, "SignUptimeVoteEnabled")
+	topic0, err := events.SelectorFromMetadata(system.FlareSystemsManagerMetaData, "SignUptimeVoteEnabled")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
@@ -465,7 +444,7 @@ func (s *systemsManagerContractClientImpl) sendSignUptimeVote(ctx context.Contex
 
 func (s *systemsManagerContractClientImpl) UptimeVoteSignedListener(ctx context.Context, db epochClientDB, epoch *utils.EpochTimingConfig) <-chan *system.FlareSystemsManagerUptimeVoteSigned {
 	out := make(chan *system.FlareSystemsManagerUptimeVoteSigned)
-	topic0, err := chain.EventIDFromMetadata(system.FlareSystemsManagerMetaData, "UptimeVoteSigned")
+	topic0, err := events.SelectorFromMetadata(system.FlareSystemsManagerMetaData, "UptimeVoteSigned")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)

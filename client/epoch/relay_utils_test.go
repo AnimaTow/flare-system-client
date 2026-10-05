@@ -18,9 +18,7 @@ const relayTestChainID = int64(114)
 
 func newRelayImplForTest(t *testing.T, cutover *shared.RelayCutover) *relayContractClientImpl {
 	t.Helper()
-	relayContract, err := relay.NewRelay(common.Address{}, nil)
-	require.NoError(t, err)
-	return &relayContractClientImpl{relay: relayContract, relayCutover: cutover}
+	return &relayContractClientImpl{relayCutover: cutover}
 }
 
 // spiLog builds a SigningPolicyInitialized log as the indexer stores it: epoch id in

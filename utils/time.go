@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"math/rand"
 	"time"
 )
 
@@ -13,35 +12,6 @@ type RealTimeProvider struct{}
 
 func (RealTimeProvider) Now() time.Time {
 	return time.Now()
-}
-
-type FixedTimeProvider struct {
-	Time time.Time
-}
-
-func (f FixedTimeProvider) Now() time.Time {
-	return f.Time
-}
-
-func NewRandomizedTicker(interval time.Duration, randomDelta time.Duration) <-chan time.Time {
-	deltaIntervalMs := int(randomDelta.Milliseconds())
-	ch := make(chan time.Time)
-	go func() {
-		for {
-			d := interval + randomDuration(deltaIntervalMs)
-			time.Sleep(d)
-			ch <- time.Now()
-		}
-	}()
-	return ch
-}
-
-func randomDuration(deltaMs int) time.Duration {
-	delta := int64(0)
-	if deltaMs > 0 {
-		delta = int64(rand.Intn(deltaMs))
-	}
-	return time.Duration(delta * int64(time.Millisecond))
 }
 
 type EpochTicker struct {

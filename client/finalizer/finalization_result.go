@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/flare-foundation/go-flare-common/pkg/convert"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 )
 
@@ -112,8 +113,7 @@ func encodeSignatures(signatures []IndexedSignature) ([]byte, error) {
 		return nil, fmt.Errorf("too many payloads: %d", len(signatures))
 	}
 
-	sizeBytes := shared.Uint16toBytes(uint16(len(signatures)))
-	buffer.Write(sizeBytes[:])
+	buffer.Write(convert.Uint16ToBytes(uint16(len(signatures))))
 	prevIndex := -1
 	for _, signature := range signatures {
 		if signature.index < 0 {
@@ -123,9 +123,8 @@ func encodeSignatures(signatures []IndexedSignature) ([]byte, error) {
 			return nil, errors.New("payloads not sorted by index")
 		}
 
-		indexBytes := shared.Uint16toBytes(uint16(signature.index))
 		buffer.Write(signature.signature)
-		buffer.Write(indexBytes[:])
+		buffer.Write(convert.Uint16ToBytes(uint16(signature.index)))
 		prevIndex = signature.index
 	}
 	return buffer.Bytes(), nil

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/flare-foundation/flare-system-client/client/shared"
-	"github.com/flare-foundation/flare-system-client/utils"
 	"github.com/flare-foundation/flare-system-client/utils/chain"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/encoding"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 )
 
@@ -123,7 +123,7 @@ func signDigest(t *testing.T, digest []byte, key *ecdsa.PrivateKey) []byte {
 	t.Helper()
 	signature, err := crypto.Sign(digest, key)
 	require.NoError(t, err)
-	vrs, err := utils.TransformSignatureRSVtoVRS(signature)
+	vrs, err := encoding.TransformSignatureRSVtoVRS(signature)
 	require.NoError(t, err)
 	return vrs
 }

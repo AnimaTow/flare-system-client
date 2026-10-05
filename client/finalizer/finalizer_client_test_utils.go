@@ -24,6 +24,7 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/relay"
 	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/encoding"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 )
@@ -374,7 +375,7 @@ func signMessage(message []byte, privateKey *ecdsa.PrivateKey) ([]byte, error) {
 
 	logger.Infof("signature: %x", signature)
 
-	return utils.TransformSignatureRSVtoVRS(signature)
+	return encoding.TransformSignatureRSVtoVRS(signature)
 }
 
 func encodeMessage(protocolID uint8, votingRoundID uint32, randomQualityScore bool, merkleRoot []byte) ([]byte, error) {

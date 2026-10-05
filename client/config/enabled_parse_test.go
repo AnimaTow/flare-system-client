@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/flare-foundation/flare-system-client/config"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/flare-foundation/go-flare-common/pkg/toml"
 )
 
 func parseTOML(t *testing.T, body string) *Client {
@@ -15,7 +15,7 @@ func parseTOML(t *testing.T, body string) *Client {
 	path := filepath.Join(t.TempDir(), "cfg.toml")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
 	cfg := defaultConfig()
-	require.NoError(t, config.ParseConfigFile(cfg, path, false))
+	require.NoError(t, toml.ReadTo(path, cfg, true))
 	return cfg
 }
 

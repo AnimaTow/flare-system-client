@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/flare-foundation/go-flare-common/pkg/convert"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/preregistry"
@@ -178,7 +179,10 @@ func (r *registryContractClientImpl) RegisterVoter(ctx context.Context, nextRewa
 }
 
 func (r *registryContractClientImpl) sendRegisterVoter(ctx context.Context, nextRewardEpochID *big.Int, address common.Address) error {
-	epochID := uint32(nextRewardEpochID.Uint64())
+	epochID, err := convert.BigToUint32Safe(nextRewardEpochID)
+	if err != nil {
+		return fmt.Errorf("reward epoch id: %w", err)
+	}
 	signature, err := r.createSignature(epochID, address)
 	if err != nil {
 		return fmt.Errorf("signature: %w", err)
@@ -249,7 +253,10 @@ func (r *registryContractClientImpl) PreregisterVoter(ctx context.Context, nextR
 }
 
 func (r *registryContractClientImpl) sendPreRegisterVoter(ctx context.Context, nextRewardEpochID *big.Int, address common.Address) error {
-	epochID := uint32(nextRewardEpochID.Uint64())
+	epochID, err := convert.BigToUint32Safe(nextRewardEpochID)
+	if err != nil {
+		return fmt.Errorf("reward epoch id: %w", err)
+	}
 	signature, err := r.createSignature(epochID, address)
 	if err != nil {
 		return fmt.Errorf("signature: %w", err)

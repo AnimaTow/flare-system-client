@@ -17,6 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	"github.com/flare-foundation/go-flare-common/pkg/convert"
+	"github.com/flare-foundation/go-flare-common/pkg/encoding"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 )
@@ -347,19 +349,19 @@ func EncodePayload(
 		return fmt.Errorf("signing submitSignatures data: %w", err)
 	}
 
-	vrsSignature, err := utils.TransformSignatureRSVtoVRS(signature)
+	vrsSignature, err := encoding.TransformSignatureRSVtoVRS(signature)
 	if err != nil {
 		return fmt.Errorf("signature sanity check, this should not happen: %w", err)
 	}
 
-	epochBytes := shared.Uint32toBytes(uint32(votingRoundID))
-	lengthBytes := shared.Uint16toBytes(uint16(dataLength + len(data.AdditionalData)))
+	epochBytes := convert.Uint32ToBytes(uint32(votingRoundID))
+	lengthBytes := convert.Uint16ToBytes(uint16(dataLength + len(data.AdditionalData)))
 
 	tempBuffer := bytes.NewBuffer(nil)
 
 	tempBuffer.WriteByte(protocolID)   // Protocol ID (1 byte)
-	tempBuffer.Write(epochBytes[:])    // Epoch (4 bytes)
-	tempBuffer.Write(lengthBytes[:])   // Length (2 bytes)
+	tempBuffer.Write(epochBytes)       // Epoch (4 bytes)
+	tempBuffer.Write(lengthBytes)      // Length (2 bytes)
 	tempBuffer.WriteByte(protocolType) // Type (1 byte)
 
 	if protocolType == 0 {

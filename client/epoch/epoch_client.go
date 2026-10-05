@@ -86,14 +86,11 @@ func NewClient(ctx flarectx.ClientContext, relayCutover *shared.RelayCutover) (*
 		return nil, err
 	}
 
-	relayClient, err := NewRelayContractClient(
+	relayClient := NewRelayContractClient(
 		ethClient,
 		cfg.ContractAddresses.Relay,
 		relayCutover,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	registryClient, err := NewRegistryContractClient(
 		ethClient,

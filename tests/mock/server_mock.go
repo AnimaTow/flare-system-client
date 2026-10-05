@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 )
 
 type dataProviderResponse struct {
@@ -39,7 +39,11 @@ func NewMockServer(port int, protocolID uint8) *http.Server {
 		if err != nil {
 			http.Error(w, fmt.Sprintf("writing response: %s", err), http.StatusInternalServerError)
 		}
-		data := buildMessage(protocolID, uint32(votingRound), []byte("bla"))
+		data, err := payload.BuildMessage(protocolID, uint32(votingRound), []byte("bla"))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("building message: %s", err), http.StatusInternalServerError)
+			return
+		}
 		resp := dataProviderResponse{Status: "OK", Data: data}
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(&resp)
@@ -55,7 +59,11 @@ func NewMockServer(port int, protocolID uint8) *http.Server {
 		if err != nil {
 			http.Error(w, fmt.Sprintf("writing response: %s", err), http.StatusInternalServerError)
 		}
-		data := buildMessage(protocolID, uint32(votingRound), []byte("bla"))
+		data, err := payload.BuildMessage(protocolID, uint32(votingRound), []byte("bla"))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("building message: %s", err), http.StatusInternalServerError)
+			return
+		}
 		resp := dataProviderResponse{Status: "OK", Data: data}
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(&resp)
@@ -74,7 +82,7 @@ func NewMockServer(port int, protocolID uint8) *http.Server {
 		// single-leaf tree: the root is the leaf itself, so finalizationData is the value alone
 		random := crypto.Keccak256Hash([]byte("random"), binary.BigEndian.AppendUint32(nil, uint32(votingRound)))
 		merkleRoot := randomLeaf(uint32(votingRound), random)
-		data := buildMessageForSigning(protocolID, uint32(votingRound), merkleRoot)
+		data := payload.BuildMessageForSigning(protocolID, uint32(votingRound), true, merkleRoot)
 		resp := dataProviderResponse{Status: "OK", Data: data, FinalizationData: random.Hex()}
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(&resp)
@@ -89,37 +97,14 @@ func NewMockServer(port int, protocolID uint8) *http.Server {
 	return server
 }
 
-func buildMessage(protocolID uint8, votingRoundID uint32, payload []byte) string {
-	message := make([]byte, 7, 7+len(payload))
-	message[0] = protocolID
-
-	binary.BigEndian.PutUint32(message[1:5], votingRoundID)
-	binary.BigEndian.PutUint16(message[5:7], uint16(len(payload)))
-
-	message = append(message, payload...)
-
-	return "0x" + hex.EncodeToString(message)
-}
-
 // randomLeaf is the Relay's keccak256(abi.encode(uint256 votingRoundId, uint256 value,
 // uint256 isSecure)) for the secure random the message claims.
-func randomLeaf(votingRoundID uint32, value common.Hash) []byte {
+func randomLeaf(votingRoundID uint32, value common.Hash) common.Hash {
 	var buf [96]byte
 	binary.BigEndian.PutUint32(buf[28:32], votingRoundID)
 	copy(buf[32:64], value[:])
 	buf[95] = 1
-	return crypto.Keccak256(buf[:])
-}
-
-func buildMessageForSigning(protocolID uint8, roundID uint32, merkleRoot []byte) string {
-	data := make([]byte, 38)
-
-	data[0] = protocolID
-	binary.BigEndian.PutUint32(data[1:5], roundID)
-	data[5] = 1 // claim secure random
-	copy(data[6:38], merkleRoot[:])
-
-	return "0x" + hex.EncodeToString(data)
+	return crypto.Keccak256Hash(buf[:])
 }
 
 func main() {

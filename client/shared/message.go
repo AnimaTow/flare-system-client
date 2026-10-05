@@ -7,6 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/flare-foundation/go-flare-common/pkg/convert"
 )
 
 type Message []byte
@@ -43,16 +45,9 @@ func (msg Message) Parse() (RelayMessage, error) {
 // must pick the same form.
 func MessageDigest(msg []byte, chainID int64, chainBound bool) []byte {
 	if chainBound {
-		return accounts.TextHash(crypto.Keccak256(ChainIDWord(chainID), msg))
+		return accounts.TextHash(crypto.Keccak256(convert.Uint64ToHash(uint64(chainID)).Bytes(), msg))
 	}
 	return accounts.TextHash(crypto.Keccak256(msg))
-}
-
-// ChainIDWord is the 32-byte left-padded chainID the Relay prepends to chain-bound preimages.
-func ChainIDWord(chainID int64) []byte {
-	var w [32]byte
-	binary.BigEndian.PutUint64(w[24:], uint64(chainID))
-	return w[:]
 }
 
 type ProtocolMessage struct {

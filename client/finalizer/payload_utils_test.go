@@ -14,7 +14,6 @@ import (
 
 	"github.com/flare-foundation/flare-system-client/client/protocol"
 	"github.com/flare-foundation/flare-system-client/client/shared"
-	"github.com/flare-foundation/flare-system-client/utils"
 
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
@@ -570,9 +569,9 @@ func TestBothTypesShareOneCollection(t *testing.T) {
 // ~65 KB per bundled payload, until the round is pruned.
 func TestParsedSignatureDoesNotPinTheTxInput(t *testing.T) {
 	const trailer = 8192
-	payload := make([]byte, 1+utils.SignatureLength+trailer)
+	payload := make([]byte, 1+crypto.SignatureLength+trailer)
 	payload[0] = 1
-	for i := range payload[1 : 1+utils.SignatureLength] {
+	for i := range payload[1 : 1+crypto.SignatureLength] {
 		payload[1+i] = byte(i + 1)
 	}
 

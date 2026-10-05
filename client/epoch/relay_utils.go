@@ -12,7 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
 
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/relay"
 )
@@ -23,7 +25,6 @@ type relayContractClient interface {
 
 type relayContractClientImpl struct {
 	addresses    []common.Address // configured Relay and, across the cutover, the new one
-	relay        *relay.Relay
 	txVerifier   *chain.TxVerifier
 	relayCutover *shared.RelayCutover
 }
@@ -32,12 +33,7 @@ func NewRelayContractClient(
 	ethClient *ethclient.Client,
 	address common.Address,
 	relayCutover *shared.RelayCutover,
-) (*relayContractClientImpl, error) {
-	relay, err := relay.NewRelay(address, ethClient)
-	if err != nil {
-		return nil, err
-	}
-
+) *relayContractClientImpl {
 	addresses := []common.Address{address}
 	if relayCutover.Scheduled() {
 		addresses = append(addresses, relayCutover.NewAddress)
@@ -45,14 +41,13 @@ func NewRelayContractClient(
 
 	return &relayContractClientImpl{
 		addresses:    addresses,
-		relay:        relay,
 		txVerifier:   chain.NewTxVerifier(ethClient),
 		relayCutover: relayCutover,
-	}, nil
+	}
 }
 
 func (r *relayContractClientImpl) SigningPolicyInitializedListener(ctx context.Context, db epochClientDB, rewardEpochTiming *utils.EpochTimingConfig) <-chan *relay.RelaySigningPolicyInitialized {
-	topic0, err := chain.EventIDFromMetadata(relay.RelayMetaData, "SigningPolicyInitialized")
+	topic0, err := events.SelectorFromMetadata(relay.RelayMetaData, "SigningPolicyInitialized")
 	if err != nil {
 		// panic, this error is fatal
 		panic(err)
@@ -107,7 +102,7 @@ func (r *relayContractClientImpl) selectPolicy(logs []database.Log, anticipated 
 	var selected *relay.RelaySigningPolicyInitialized
 
 	for _, log := range logs {
-		policyData, err := r.parseSigningPolicyInitializedEvent(log)
+		policyData, err := policy.ParseSigningPolicyInitializedEvent(log)
 		if err != nil {
 			logger.Errorf("Error parsing SigningPolicyInitialized event %v", err)
 			continue
@@ -128,8 +123,4 @@ func (r *relayContractClientImpl) selectPolicy(logs []database.Log, anticipated 
 			anticipated, selected.RewardEpochId)
 	}
 	return selected
-}
-
-func (r *relayContractClientImpl) parseSigningPolicyInitializedEvent(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
-	return shared.ParseSigningPolicyInitializedEvent(r.relay, dbLog)
 }
