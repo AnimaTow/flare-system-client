@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 const randomProtocolID = uint8(100)
@@ -67,7 +66,7 @@ func TestFinalizationDataToStore(t *testing.T) {
 	full := words(randomValue, proofNodeA)
 	atCap := make([]byte, maxFinalizationDataLength)
 	overCap := make([]byte, maxFinalizationDataLength+common.HashLength)
-	policyAt := func(epoch int64) *policy.SigningPolicy { return &policy.SigningPolicy{RewardEpochID: epoch} }
+	policyAt := func(epoch int64) *policy.SigningPolicy { return &policy.SigningPolicy{RewardEpochID: uint32(epoch)} }
 
 	cases := []struct {
 		name       string
@@ -138,8 +137,8 @@ func TestNeedsFinalizationData(t *testing.T) {
 // The data lives with the message it arrived with.
 func TestAddMessageStoresTheDataWithItsOwnMessage(t *testing.T) {
 	sp := &policy.SigningPolicy{
-		RewardEpochID: testBreakingEpoch,
-		Voters:        voters.NewSet([]common.Address{{}}, []uint16{1}, nil),
+		RewardEpochID: uint32(testBreakingEpoch),
+		Voters:        newVoterSet(t, []common.Address{{}}, []uint16{1}),
 	}
 	message := buildMessage(randomProtocolID, 9, randomValue)
 	data := words(randomValue, proofNodeA)
@@ -167,8 +166,8 @@ func relayRound(t *testing.T, rewardEpochID int64, data []byte) *testEthClient {
 
 	message := buildMessage(randomProtocolID, 7, randomValue)
 	sp := &policy.SigningPolicy{
-		RewardEpochID: rewardEpochID,
-		Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+		RewardEpochID: uint32(rewardEpochID),
+		Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 	}
 
 	storage := newFinalizationStorage(cutover)
@@ -228,7 +227,7 @@ func TestNothingIsSentWithoutTheFinalizationData(t *testing.T) {
 
 // The data only reaches the tx input when the finalization carries one.
 func TestPrepareFinalizationTxInputAppendsTheData(t *testing.T) {
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 	message := buildMessage(randomProtocolID, 7, common.Hash{})
 	data := words(randomValue, proofNodeA)
 

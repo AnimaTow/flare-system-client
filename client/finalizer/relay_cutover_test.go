@@ -15,7 +15,6 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 var (
@@ -143,8 +142,8 @@ func TestSignerRecoveryFollowsTheLearnedBoundary(t *testing.T) {
 
 	// a policy below the breaking epoch: the message arrives while the fallback form still applies
 	sp := &policy.SigningPolicy{
-		RewardEpochID: testBreakingEpoch - 1,
-		Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+		RewardEpochID: uint32(testBreakingEpoch - 1),
+		Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 	}
 
 	storage := newFinalizationStorage(cutover)
@@ -188,8 +187,8 @@ func TestFinalizerRecoversSignersUnderThePolicyEpochDigest(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			sp := &policy.SigningPolicy{
-				RewardEpochID: c.rewardEpoch,
-				Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+				RewardEpochID: uint32(c.rewardEpoch),
+				Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 			}
 
 			matching := &submitSignaturesPayload{
@@ -245,8 +244,8 @@ func TestFinalizerRecoversSignersUnderTheEmbeddedRoundDigest(t *testing.T) {
 			require.NoError(t, err)
 
 			sp := &policy.SigningPolicy{
-				RewardEpochID: c.rewardEpoch,
-				Voters:        voters.NewSet([]common.Address{signer}, []uint16{2}, nil),
+				RewardEpochID: uint32(c.rewardEpoch),
+				Voters:        newVoterSet(t, []common.Address{signer}, []uint16{2}),
 			}
 			pld := &submitSignaturesPayload{
 				sender:        signer,

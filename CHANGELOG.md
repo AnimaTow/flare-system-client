@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Optional MySQL TLS in `[db.tls]`: `mode` (`off`, `skip-verify` or `verify`), `ca_cert`, `server_name`, `client_cert` and `client_key` (env `DB_TLS_MODE`, `DB_TLS_CA_CERT`, `DB_TLS_SERVER_NAME`, `DB_TLS_CLIENT_CERT`, `DB_TLS_CLIENT_KEY`). Unset keeps the connection plaintext.
+- Optional connection pool limits in `[db.pool]`: `max_open_conns`, `max_idle_conns`, `conn_max_lifetime` and `conn_max_idle_time` (env `DB_MAX_OPEN_CONNS`, `DB_MAX_IDLE_CONNS`, `DB_CONN_MAX_LIFETIME`, `DB_CONN_MAX_IDLE_TIME`). Unset keeps the driver defaults.
+
+### Changed
+
+- go-flare-common is upgraded to v1.3.0, which raises `golang.org/x/crypto`, `golang.org/x/text`, `filippo.io/edwards25519`, `go.opentelemetry.io/otel` and `gorm` (to v1.30).
+- Rotated log files are kept for at most 10 files and 30 days, set by `[logger] max_backups` and `max_age_days`; they were kept forever. An invalid `[logger] level` falls back to DEBUG instead of INFO.
+- Indexer transactions and logs with equal timestamps are processed in database id order.
+
 ## [v1.2.0](https://github.com/flare-foundation/flare-system-client/tree/v1.2.0) - 2026-09-07
 
 ### Added

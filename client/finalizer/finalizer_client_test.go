@@ -17,7 +17,6 @@ import (
 	"github.com/flare-foundation/flare-system-client/utils"
 
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
-	"github.com/flare-foundation/go-flare-common/pkg/voters"
 )
 
 func TestMain(m *testing.M) {
@@ -159,7 +158,7 @@ func TestThresholdOnTheMessagePathPrunesStorage(t *testing.T) {
 	priv, addr := newKeyAndAddress(t)
 	sp := &policy.SigningPolicy{
 		RewardEpochID: 1, StartVotingRoundID: 1, Threshold: 1, Seed: big.NewInt(1),
-		Voters: voters.NewSet([]common.Address{addr}, []uint16{2}, nil),
+		Voters: newVoterSet(t, []common.Address{addr}, []uint16{2}),
 	}
 	policies := policy.NewStorage()
 	require.NoError(t, policies.Add(sp))
@@ -206,7 +205,7 @@ func TestOnlyConfiguredProtocolsAreStored(t *testing.T) {
 	const round = uint32(50)
 	sp := &policy.SigningPolicy{
 		RewardEpochID: 1, StartVotingRoundID: 1, Threshold: 100,
-		Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil),
+		Voters: newVoterSet(t, []common.Address{{}}, []uint16{1}),
 	}
 	policies := policy.NewStorage()
 	require.NoError(t, policies.Add(sp))
@@ -237,7 +236,7 @@ func TestOnlyConfiguredProtocolsAreStored(t *testing.T) {
 // The threshold path cannot bound the storage on its own: only the local message crosses a
 // threshold, so a node whose provider is down would keep every round of the outage.
 func TestStaleRoundsArePrunedWithoutAnyThreshold(t *testing.T) {
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 	storage := newFinalizationStorage(testCutover)
 
 	// the pruner reads the clock, so anchor the rounds to it
@@ -260,7 +259,7 @@ func TestStaleRoundsArePrunedWithoutAnyThreshold(t *testing.T) {
 
 // Before minRoundsStored rounds nothing is prunable, and the subtraction must not wrap.
 func TestStalePruneKeepsEverythingEarlyOn(t *testing.T) {
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 	storage := newFinalizationStorage(testCutover)
 	require.NoError(t, bufferRoundPayload(t, storage, 1, sp))
 
@@ -295,7 +294,7 @@ func TestRunWiresTheStalePruner(t *testing.T) {
 
 // The tick itself prunes, and cancellation ends the loop with the context's error.
 func TestStalePrunerPrunesOnTheTick(t *testing.T) {
-	sp := &policy.SigningPolicy{Voters: voters.NewSet([]common.Address{{}}, []uint16{1}, nil)}
+	sp := &policy.SigningPolicy{Voters: newVoterSet(t, []common.Address{{}}, []uint16{1})}
 	storage := newFinalizationStorage(testCutover)
 	timing := &utils.EpochTimingConfig{Start: time.Now().Add(-100 * time.Second), Period: time.Second}
 	current := uint32(timing.EpochIndex(time.Now()))

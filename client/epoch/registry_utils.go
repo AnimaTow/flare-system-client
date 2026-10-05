@@ -184,7 +184,7 @@ func (r *registryContractClientImpl) sendRegisterVoter(ctx context.Context, next
 		return fmt.Errorf("signature: %w", err)
 	}
 
-	vrsSignature := registry.IVoterRegistrySignature{
+	vrsSignature := registry.Signature{
 		R: [32]byte(signature[0:32]),
 		S: [32]byte(signature[32:64]),
 		V: signature[64] + 27,
@@ -255,7 +255,7 @@ func (r *registryContractClientImpl) sendPreRegisterVoter(ctx context.Context, n
 		return fmt.Errorf("signature: %w", err)
 	}
 
-	vrsSignature := preregistry.IVoterRegistrySignature{
+	vrsSignature := preregistry.Signature{
 		R: [32]byte(signature[0:32]),
 		S: [32]byte(signature[32:64]),
 		V: signature[64] + 27,

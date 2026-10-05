@@ -161,9 +161,12 @@ func (c *client) fetchExistingSigningPolicies(
 		return startTime, err
 	}
 	for _, sp := range spList {
-		newPolicy := policy.NewSigningPolicy(sp.policyData, nil)
-		c.relayCutover.ObserveSigningPolicy(newPolicy.RewardEpochID, newPolicy.StartVotingRoundID)
-		if newPolicy.RewardEpochID < c.finalizerContext.startingRewardEpoch {
+		newPolicy, err := policy.NewSigningPolicy(sp.policyData, nil)
+		if err != nil {
+			return startTime, err
+		}
+		c.relayCutover.ObserveSigningPolicy(int64(newPolicy.RewardEpochID), newPolicy.StartVotingRoundID)
+		if int64(newPolicy.RewardEpochID) < c.finalizerContext.startingRewardEpoch {
 			continue
 		}
 		if err := c.signingPolicyStorage.Add(newPolicy); err != nil {
@@ -190,9 +193,13 @@ func (c *client) runSigningPolicyInitializedListener(ctx context.Context, startT
 			return ctx.Err()
 		}
 
-		policy := policy.NewSigningPolicy(dbPolicy.policyData, nil)
-		c.relayCutover.ObserveSigningPolicy(policy.RewardEpochID, policy.StartVotingRoundID)
-		if policy.RewardEpochID < c.finalizerContext.startingRewardEpoch {
+		policy, err := policy.NewSigningPolicy(dbPolicy.policyData, nil)
+		if err != nil {
+			logger.Errorf("Error parsing signing policy: %v", err)
+			continue
+		}
+		c.relayCutover.ObserveSigningPolicy(int64(policy.RewardEpochID), policy.StartVotingRoundID)
+		if int64(policy.RewardEpochID) < c.finalizerContext.startingRewardEpoch {
 			continue
 		}
 		if err := c.signingPolicyStorage.Add(policy); err != nil {
@@ -219,7 +226,7 @@ func (c *client) signingPolicyData(votingRoundID uint32) (*policy.SigningPolicy,
 	if !last {
 		return sp, sp.Threshold
 	}
-	expectedEnd := c.finalizerContext.rewardEpoch.EndEpoch(sp.RewardEpochID)
+	expectedEnd := c.finalizerContext.rewardEpoch.EndEpoch(int64(sp.RewardEpochID))
 
 	if int64(votingRoundID) < expectedEnd {
 		return sp, sp.Threshold
@@ -324,7 +331,7 @@ func (c *client) pruneStaleRounds() {
 // check; only the shape is — non-empty, word-aligned, capped — so a bad provider is flagged before a send.
 func (c *client) finalizationDataToStore(m *shared.ProtocolMessage, sp *policy.SigningPolicy) []byte {
 	expected := m.ProtocolID == c.finalizerContext.randomNumberProtocolID &&
-		c.relayCutover.NewRelayFromRewardEpoch(sp.RewardEpochID)
+		c.relayCutover.NewRelayFromRewardEpoch(int64(sp.RewardEpochID))
 	if !expected {
 		if len(m.FinalizationData) > 0 {
 			logger.Debugf("Ignoring finalization data for protocol %d in voting round %d, none is needed", m.ProtocolID, m.VotingRoundID)

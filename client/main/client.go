@@ -14,6 +14,7 @@ import (
 	"github.com/flare-foundation/flare-system-client/client/shared"
 	globalConfig "github.com/flare-foundation/flare-system-client/config"
 
+	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )
 
@@ -27,6 +28,8 @@ func main() {
 	}
 
 	logger.Set(clientCtx.Config().Logger)
+	// after Set: Logger() is a snapshot, and DB retry errors are dropped until a logger is set
+	database.SetErrorLogger(logger.Logger())
 
 	for _, w := range clientCtx.Config().SubmitterWarnings() {
 		logger.Warnf("submitter config: %s", w)
